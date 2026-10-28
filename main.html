@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vision Lite - Scene & Object Detection</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: url("dotted lines.html") repeat;
+            color: #ffffff;
+        }
+        .warning-box {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50vw;
+            height: 50vh;
+            background: rgba(255, 255, 255, 0.35);
+            border-radius: 30px 30px 0 0;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+            backdrop-filter: blur(18px) saturate(180%);
+            -webkit-backdrop-filter: blur(18px) saturate(180%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 32px 24px 24px 24px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            z-index: 1000;
+            color: #222;
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(40px);}
+            to { opacity: 1; transform: translateX(-50%) translateY(0);}
+        }
+        .warning-box p {
+            font-size: 1.15rem;
+            margin-bottom: 28px;
+            color: #ffffff;
+            font-weight: 500;
+            text-shadow: 0 2px 8px rgba(255, 255, 255, 0.12);
+        }
+        .warning-box button {
+            background: rgba(255, 255, 255, 0.768);
+            border: none;
+            border-radius: 18px;
+            padding: 10px 32px;
+            font-size: 1rem;
+            color: #222;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: background 0.2s, color 0.2s;
+        }
+        .warning-box button:hover {
+            background: #f0f0f0;
+            color: #0077ff;
+        }
+        .container {
+            max-width: 700px;
+            margin: 40px auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(90px);
+            -webkit-backdrop-filter: blur(90px);
+            padding: 32px 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 {
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        button, input[type="submit"] {
+            background: transparent;
+            border: 2px solid #ffffff;
+            padding: 10px 22px;
+            border-radius: 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.3s ease;
+            color: #ffffff;
+        }
+        button:hover, input[type="submit"]:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        button:disabled, input[type="submit"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #openCameraBtn {
+            border: 2px solid #ffffff;
+        }
+        .result-section {
+            margin-top: 24px;
+            padding: 18px;
+            background: rgba(240, 246, 250, 0.1);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <iframe src="dotted lines.html" style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; z-index:-1;"></iframe>
+    
+    <div class="warning-box" id="warningBox">
+        <p>Due to Heavy processing server is slow and sometimes website crashes</p>
+        <p>If you want to view model performance, please contact Rutuj Dhodapkar.</p>
+        <button onclick="document.getElementById('warningBox').style.display='none'">Okay</button>
+    </div>
+
+    <div class="container">
+        <h1>Vision Lite</h1>
+        <form method="POST" enctype="multipart/form-data">
+            <label for="image"><b>Upload an Image for Scene & Object Detection:</b></label><br>
+            <input type="file" name="image" id="image" accept="image/*" required>
+            <br>
+            <input type="submit" value="Analyze Image">
+        </form>
+
+        {% if result %}
+            <div class="error">{{ result }}</div>
+        {% endif %}
+
+        {% if scene or objects or output_img_url %}
+        <div class="result-section">
+            <h2>Detection Results</h2>
+            {% if scene %}
+                <p><b>Scene:</b> {{ scene }}</p>
+            {% endif %}
+            {% if objects %}
+                <p><b>Objects:</b> {{ objects|join(', ') }}</p>
+            {% endif %}
+            {% if output_img_url %}
+                <img src="{{ output_img_url }}" alt="Detected Output" class="output-image">
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <hr style="margin: 32px 0; border-color: rgba(255, 255, 255, 0.2);">
+
+        <button id="openCameraBtn" onclick="openCamera()">Open Live Camera Detection</button>
+        <div id="cam" style="display:none;">
+            <h2>Live Camera - Real-time Object Detection</h2>
+            <img src="" width="640" id="liveCamImg" style="border:1px solid rgba(255, 255, 255, 0.3); border-radius:6px;">
+            <br>
+            <button onclick="closeCamera()" style="margin-top:12px; background:transparent; border:2px solid #ffffff;">Close Camera</button>
+        </div>
+    </div>
+    <script>
+        function openCamera() {
+            document.getElementById('cam').style.display = 'block';
+            document.getElementById('openCameraBtn').style.display = 'none';
+            document.getElementById('liveCamImg').src = '/video_feed';
+        }
+        function closeCamera() {
+            document.getElementById('cam').style.display = 'none';
+            document.getElementById('openCameraBtn').style.display = 'block';
+            document.getElementById('liveCamImg').src = '';
+        }
+    </script>
+</body>
+</html>
